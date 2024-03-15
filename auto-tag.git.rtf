@@ -1,0 +1,39 @@
+# Function to increment version numbers
+increment_version(){
+    local version=$1
+    local major=$(echo $version | cut -d. -f1)
+    local minor=$(echo $version | cut -d. -f2)
+    local patch=$(echo $version | cut -d. -f3)
+    patch=$((patch + 1))
+    echo "$major.$minor.$patch"
+}
+
+# Check if the current branch is master and if it's a merge commit from uat
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+commit_message=$(git log -1 --pretty=%B)
+echo "Current branch: $current_branch"
+echo "Commit message: $commit_message"
+
+if [[ $current_branch == "dev" && $commit_message == *"Merge branch 'feature_auto/tag'"* ]]; then
+    # Get the latest tag on the master branch
+    latest_tag=$(git describe --tags --abbrev=0)
+    echo "Latest tag: $latest_tag"
+    
+    # Extract version number from the tag
+    version=$(echo $latest_tag | grep -oP '(\d+\.\d+\.\K\d+)')
+    echo "Version: $version"
+
+    # Increment the patch version
+    new_version=$(increment_version $version)
+    echo "New version: $new_version"
+
+    # Create the new tag
+    git tag -a "$new_version" -m "Version $new_version"
+    echo "Tag created: $new_version"
+
+    # Push the new tag to the remote repository
+    git push origin "$new_version"
+    echo "Tag pushed to origin: $new_version"
+
+    echo "New version tag created and pushed: $new_version"
+fi
